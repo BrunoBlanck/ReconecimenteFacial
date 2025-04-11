@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Micro Aplicativo</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding-bottom: 70px;
+    }
+    .content {
+      flex: 1;
+      padding: 20px;
+    }
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      /* height: 60px; */
+      background-color: #f8f9fa;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+    }
+    .nav-item {
+      cursor: pointer;
+      text-align: center;
+      padding: 10px 0;
+      color: #6c757d;
+    }
+    .nav-item.active {
+      color: #0d6efd;
+    }
+    .nav-icon {
+      font-size: 1.5rem;
+    }
+    .preview-container {
+      width: 200px;
+      height: 200px;
+      border: 2px dashed #ced4da;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .preview-container img {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .section {
+      display: none;
+    }
+    .section.active {
+      display: block;
+    }
+    .clickable {
+      cursor: pointer;
+    }
+    #img-results{
+        width: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div class="content">
+    <!-- Seção de Busca -->
+    <div id="busca-section" class="section active">
+      <h2 class="mb-4">Buscar Rosto</h2>
+      <form id="busca-form">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="preview-container" id="preview-busca">
+              <span class="text-muted">Sem imagem</span>
+            </div>
+            <input type="file" class="form-control" id="image-input-busca" accept="image/*" style="display: none;">
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <button type="submit" class="btn btn-secondary w-100" id="buscar-btn" disabled>Buscar</button>
+          </div>
+        </div>
+      </form>
+      
+      <!-- Resultados da Busca -->
+      <div id="resultados-busca" style="display: none;">
+        <h3 class="mt-4">Resultados da Busca</h3>
+        <div id="resultados-container" class="row">
+          <!-- Os resultados serão inseridos aqui -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Seção de Cadastro -->
+    <div id="cadastro-section" class="section">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Usuários Cadastrados</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal" id="novo-usuario-btn">
+          <i class="bi bi-plus-lg"></i> Cadastrar
+        </button>
+      </div>
+      
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <input type="text" class="form-control" id="tabela-busca" placeholder="Buscar usuários...">
+        </div>
+      </div>
+      
+      <div class="table-responsive">
+        <table class="table table-striped table-hover" id="usuarios-tabela">
+          <thead>
+            <tr>
+              <th class="clickable" data-sort="nome">Nome <i class="bi bi-arrow-down-up"></i></th>
+              <!-- <th class="clickable" data-sort="telefone">Telefone <i class="bi bi-arrow-down-up"></i></th>
+              <th class="clickable" data-sort="endereco">Endereço <i class="bi bi-arrow-down-up"></i></th> -->
+              <th class="clickable" data-sort="ativo">Status <i class="bi bi-arrow-down-up"></i></th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-corpo">
+            <!-- Será preenchido via API -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Navegação Inferior -->
+  <div class="nav-bar">
+    <div class="container">
+      <div class="row">
+        <div class="col-6 nav-item active" data-section="busca-section">
+          <i class="bi bi-search nav-icon"></i>
+          <div>Buscar</div>
+        </div>
+        <div class="col-6 nav-item" data-section="cadastro-section">
+          <i class="bi bi-people nav-icon"></i>
+          <div>Cadastros</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal de Cadastro/Edição -->
+  <div class="modal fade" id="cadastroModal" tabindex="-1" aria-labelledby="cadastroModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cadastroModalLabel">Novo Usuário</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="cadastro-form">
+            <input type="hidden" id="usuario-uuid">
+            <div class="mb-3 text-center">
+              <div class="preview-container mx-auto" id="preview-cadastro">
+                <span class="text-muted">Sem imagem</span>
+              </div>
+              <input type="file" class="form-control" id="image-input-cadastro" accept="image/*" style="display: none;">
+            </div>
+            <div class="mb-3">
+              <label for="nome" class="form-label">Nome</label>
+              <input type="text" class="form-control" id="nome" required>
+            </div>
+            <div class="mb-3">
+              <label for="telefone" class="form-label">Telefone</label>
+              <input type="tel" class="form-control" id="telefone" required>
+            </div>
+            <div class="mb-3">
+              <label for="endereco" class="form-label">Endereço</label>
+              <input type="text" class="form-control" id="endereco" required>
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="ativo" checked>
+              <label class="form-check-label" for="ativo">Ativo</label>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="salvar-usuario">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Bootstrap e JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let usuarios = [];
+    let currentSort = { column: 'nome', direction: 'asc' };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchUsuarios();
+      setupEventListeners();
+    });
+
+    function setupEventListeners() {
+      // Navegação inferior
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const targetSection = item.getAttribute('data-section');
+          document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+          document.getElementById(targetSection).classList.add('active');
+        });
+      });
+
+      // Preview de imagem na busca
+      const imageInputBusca = document.getElementById('image-input-busca');
+      const previewBusca = document.getElementById('preview-busca');
+      imageInputBusca.addEventListener('change', event => {
+        mostrarImagemPreview(event.target, previewBusca);
+        document.getElementById('buscar-btn').disabled = false;
+      });
+
+      // Formulário de busca
+      document.getElementById('busca-form').addEventListener('submit', event => {
+        event.preventDefault();
+        buscarRosto();
+      });
+
+      // Preview de imagem no cadastro
+      const imageInputCadastro = document.getElementById('image-input-cadastro');
+      const previewCadastro = document.getElementById('preview-cadastro');
+      imageInputCadastro.addEventListener('change', event => {
+        mostrarImagemPreview(event.target, previewCadastro);
+      });
+
+      // Busca na tabela
+      document.getElementById('tabela-busca').addEventListener('input', renderizarTabela);
+
+      // Ordenação da tabela
+      document.querySelectorAll('th.clickable').forEach(th => {
+        th.addEventListener('click', () => {
+          const column = th.getAttribute('data-sort');
+          if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSort.column = column;
+            currentSort.direction = 'asc';
+          }
+          renderizarTabela();
+        });
+      });
+
+      // Salvar usuário (novo ou edição)
+      document.getElementById('salvar-usuario').addEventListener('click', salvarUsuario);
+    }
+
+    function mostrarImagemPreview(input, previewElement) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          previewElement.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        }
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    async function fetchUsuarios() {
+      try {
+        const response = await fetch('/imagens');
+        if (response.ok) {
+          usuarios = await response.json();
+          renderizarTabela();
+        } else {
+          console.error('Erro ao buscar usuários');
+        }
+      } catch (error) {
+        console.error('Erro na requisição:', error);
+      }
+    }
+
+    function renderizarTabela() {
+      const tabelaCorpo = document.getElementById('tabela-corpo');
+      const termoBusca = document.getElementById('tabela-busca').value.toLowerCase();
+      let usuariosFiltrados = usuarios.filter(usuario => {
+        return usuario.nome.toLowerCase().includes(termoBusca) ||
+               usuario.telefone.includes(termoBusca) ||
+               usuario.endereco.toLowerCase().includes(termoBusca);
+      });
+
+      usuariosFiltrados.sort((a, b) => {
+        let valorA = a[currentSort.column];
+        let valorB = b[currentSort.column];
+        if (typeof valorA === 'string') {
+          valorA = valorA.toLowerCase();
+          valorB = valorB.toLowerCase();
+        }
+        if (valorA < valorB) return currentSort.direction === 'asc' ? -1 : 1;
+        if (valorA > valorB) return currentSort.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      tabelaCorpo.innerHTML = '';
+      usuariosFiltrados.forEach(usuario => {
+        const tr = document.createElement('tr');
+        // <td>${usuario.telefone}</td>
+        // <td>${usuario.endereco}</td>
+        tr.innerHTML = `
+          <td>${usuario.nome}</td>
+          <td><span class="badge ${usuario.ativo ? 'bg-success' : 'bg-danger'}">${usuario.ativo ? 'Ativo' : 'Inativo'}</span></td>
+          <td>
+            <button class="btn btn-sm btn-primary editar-btn" data-uuid="${usuario.uuid}">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm ${usuario.ativo ? 'btn-warning' : 'btn-success'} alternar-status-btn" data-uuid="${usuario.uuid}">
+              <i class="bi ${usuario.ativo ? 'bi-x-circle' : 'bi-check-circle'}"></i>
+            </button>
+          </td>
+        `;
+        tabelaCorpo.appendChild(tr);
+      });
+
+      document.querySelectorAll('.editar-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uuid = btn.getAttribute('data-uuid');
+          editarUsuario(uuid);
+        });
+      });
+
+      document.querySelectorAll('.alternar-status-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uuid = btn.getAttribute('data-uuid');
+          alternarStatusUsuario(uuid);
+        });
+      });
+    }
+
+    function editarUsuario(uuid) {
+      const usuario = usuarios.find(u => u.uuid === uuid);
+      if (usuario) {
+        document.getElementById('cadastroModalLabel').textContent = 'Editar Usuário';
+        document.getElementById('usuario-uuid').value = usuario.uuid;
+        document.getElementById('nome').value = usuario.nome;
+        document.getElementById('telefone').value = usuario.telefone;
+        document.getElementById('endereco').value = usuario.endereco;
+        document.getElementById('ativo').checked = usuario.ativo;
+        document.getElementById('preview-cadastro').innerHTML = `<img src="${usuario.image_url}" alt="Preview">`;
+        new bootstrap.Modal(document.getElementById('cadastroModal')).show();
+      }
+    }
+
+    async function alternarStatusUsuario(uuid) {
+      const usuario = usuarios.find(u => u.uuid === uuid);
+      if (usuario) {
+        const formData = new FormData();
+        // Atualiza apenas o status (enviando os outros campos para não sobrescrever)
+        formData.append('ativo', usuario.ativo ? 0 : 1);
+        formData.append('nome', usuario.nome);
+        formData.append('telefone', usuario.telefone);
+        formData.append('endereco', usuario.endereco);
+
+        try {
+          const response = await fetch('/update/' + uuid, {
+            method: 'PUT',
+            body: formData
+          });
+          if (response.ok) {
+            fetchUsuarios();
+          } else {
+            console.error('Erro ao atualizar status');
+          }
+        } catch (error) {
+          console.error('Erro na requisição:', error);
+        }
+      }
+    }
+
+    async function salvarUsuario() {
+      const uuid = document.getElementById('usuario-uuid').value;
+      const nome = document.getElementById('nome').value;
+      const telefone = document.getElementById('telefone').value;
+      const endereco = document.getElementById('endereco').value;
+      const ativo = document.getElementById('ativo').checked ? 1 : 0;
+      const imageInput = document.getElementById('image-input-cadastro');
+
+      if (!nome || !telefone || !endereco) {
+        alert('Preencha todos os campos obrigatórios.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('nome', nome);
+      formData.append('telefone', telefone);
+      formData.append('endereco', endereco);
+      formData.append('ativo', ativo);
+      if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]);
+      }
+
+      let url = '/upload';
+      let method = 'POST';
+      if (uuid) {
+        url = '/update/' + uuid;
+        method = 'PUT';
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: method,
+          body: formData
+        });
+        if (response.ok) {
+          fetchUsuarios();
+          // Resetar formulário e fechar modal
+          document.getElementById('cadastro-form').reset();
+          document.getElementById('usuario-uuid').value = '';
+          document.getElementById('cadastroModalLabel').textContent = 'Novo Usuário';
+          document.getElementById('preview-cadastro').innerHTML = '<span class="text-muted">Sem imagem</span>';
+          bootstrap.Modal.getInstance(document.getElementById('cadastroModal')).hide();
+        } else {
+          const data = await response.json();
+          alert('Erro: ' + (data.error || 'Não foi possível salvar o usuário.'));
+        }
+      } catch (error) {
+        console.error('Erro na requisição:', error);
+      }
+    }
+    async function buscarRosto() {
+        const resultadosBusca = document.getElementById('resultados-busca');
+        const container = document.getElementById('resultados-container');
+
+        // Limpa resultados anteriores e exibe loading
+        container.innerHTML = `
+            <div class="text-center my-3">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p>Carregando...</p>
+            </div>`;
+        resultadosBusca.style.display = 'block';
+
+        const imageInputBusca = document.getElementById('image-input-busca');
+        if (!imageInputBusca.files[0]) {
+            alert('Selecione uma imagem para busca.');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('image', imageInputBusca.files[0]);
+
+        try {
+            const response = await fetch('/compara', {
+                method: 'POST',
+                body: formData
+            });
+            const resultados = await response.json();
+            if (response.ok) {
+                exibirResultadosBusca(resultados);
+            } else {
+                container.innerHTML = `<div class="alert alert-danger">${resultados.error || 'Erro ao buscar rosto.'}</div>`;
+            }
+        } catch (error) {
+            console.error('Erro na requisição:', error);
+            container.innerHTML = `<div class="alert alert-danger">Erro na requisição.</div>`;
+        }
+    }
+
+
+    function exibirResultadosBusca(resultados) {
+        const container = document.getElementById('resultados-container');
+        container.innerHTML = '';
+        const resultadosBusca = document.getElementById('resultados-busca');
+
+        if (resultados.length === 0) {
+            container.innerHTML = '<p>Nenhuma correspondência encontrada.</p>';
+            resultadosBusca.style.display = 'block';
+            return;
+        }
+
+        // Cria a tabela
+        const table = document.createElement('table');
+        table.className = 'table table-bordered table-striped';
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+            <tr>
+            <th>Rosto Enviado</th>
+            <th>Rosto Encontrado</th>
+            <th>Informações</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        resultados.forEach(result => {
+            let rostoEncontradoHtml = '';
+            let infoHtml = '';
+
+            if (result.uuid) {
+            rostoEncontradoHtml = `<img src="${result.image_url}" alt="Face Correspondente" style="height: 100px;">`;
+            infoHtml = `<strong>${result.nome}</strong><br>
+                        Telefone: ${result.telefone}<br>
+                        Endereço: ${result.endereco}`;
+            } else {
+            rostoEncontradoHtml = `<span class="text-warning">Sem correspondência</span>`;
+            infoHtml = `<span class="text-warning">Sem correspondência</span>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td><img src="${result.uploaded_face}" alt="Face Enviada" style="height: 100px;"></td>
+            <td>${rostoEncontradoHtml}</td>
+            <td>${infoHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        container.appendChild(table);
+        resultadosBusca.style.display = 'block';
+        }
+
+
+
+    // Ao clicar no preview da busca, dispara o file input oculto
+    document.getElementById('preview-busca').addEventListener('click', () => {
+    document.getElementById('image-input-busca').click();
+    });
+
+    // Ao clicar no preview do cadastro, dispara o file input oculto
+    document.getElementById('preview-cadastro').addEventListener('click', () => {
+    document.getElementById('image-input-cadastro').click();
+    });
+
+    // Adicione este trecho dentro do setupEventListeners() ou logo após o DOM carregar
+    document.getElementById('novo-usuario-btn').addEventListener('click', () => {
+        // Limpa o formulário e reseta os campos para cadastro
+        document.getElementById('cadastro-form').reset();
+        document.getElementById('usuario-uuid').value = '';
+        document.getElementById('cadastroModalLabel').textContent = 'Novo Usuário';
+        document.getElementById('preview-cadastro').innerHTML = '<span class="text-muted">Sem imagem</span>';
+    });
+
+
+  </script>
+</body>
+</html>
